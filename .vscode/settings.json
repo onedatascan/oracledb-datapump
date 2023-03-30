@@ -1,0 +1,22 @@
+{
+    "python.autoComplete.extraPaths": [
+        "./src"
+    ],
+    "python.testing.pytestArgs": [
+        "tests"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "python.analysis.extraPaths": [
+        "./src"
+    ],
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.indexing": true,
+    "python.analysis.packageIndexDepths": [
+      {
+        "depth": 10,
+        "includeAllSymbols": true,
+        "name": ""
+      },
+    ]
+}

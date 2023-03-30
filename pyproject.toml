@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "oracledb_datapump"
+description = "Python client for Oracle datapump"
+license = {text = "apache-2.0"}
+requires-python = ">=3.11"
+version = "0.0.1"
+dependencies = [
+    "oracledb == 1.2.0",
+    "pydantic == 1.10.2",
+]
+
+[project.scripts]
+oracledb-datapump = "oracledb_datapump.__main__:main"
+
+[tool.black]
+target-version = ['py311']
+line-length = 88
+
+[tool.isort]
+profile = "black"
+
+[tool.flake8]
+max-line-length = 88
+ignore = ["E402", "F841", "F401", "F403", "E302", "E305", "E306", "E731", "W503"]
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "DEBUG"
