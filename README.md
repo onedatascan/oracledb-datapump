@@ -6,7 +6,7 @@ oracledb-datapump is a Python package for running [Oracle Datapump](https://docs
 There are three primary modes of usage:
 * Python package
 * CLI
-* HTTP server via AWS Lambda
+* AWS Lambda
 
 ## Python package
 ### Export (synchronous)
