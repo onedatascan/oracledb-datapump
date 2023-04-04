@@ -11,7 +11,7 @@ from oracledb_datapump.base import ConnectDict
 from oracledb_datapump.client import DataPump
 from oracledb_datapump.exceptions import BadRequest, UsageError
 from oracledb_datapump.log import DEFAULT_LOG_FMT, get_logger
-from oracledb_datapump.util import try_parse_dt
+from oracledb_datapump.util import parse_dt
 
 if TYPE_CHECKING:
     from oracledb_datapump.request import JobDirective
@@ -207,9 +207,7 @@ def parse_directives(
                 )
 
     if flashback_utc:
-        dt = try_parse_dt(flashback_utc)
-        if isinstance(dt, str):
-            raise ValueError(f"Invalid UTC datetime: {flashback_utc}")
+        dt: datetime = parse_dt(flashback_utc)
         job_directives.append({"name": "FLASHBACK_TIME", "value": dt.isoformat()})
 
     if directives:

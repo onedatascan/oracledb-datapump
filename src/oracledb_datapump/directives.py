@@ -23,7 +23,7 @@ from oracledb_datapump.database import Schema
 from oracledb_datapump.exceptions import InvalidObjectType
 from oracledb_datapump.files import OracleFile
 from oracledb_datapump.log import get_logger
-from oracledb_datapump.util import try_parse_dt
+from oracledb_datapump.util import parse_dt
 
 logger = get_logger(__name__)
 
@@ -308,11 +308,7 @@ class FlashbackScn(ParameterTypeWithUserArgs[int], name="FLASHBACK_SCN"):
 
 class FlashbackTime(ParameterTypeWithUserArgs[str], name="FLASHBACK_TIME"):
     def __init__(self, value: str | datetime):
-        # arg: UTC datetime
-        dt = try_parse_dt(value)
-
-        if not isinstance(dt, datetime):
-            raise ValueError(f"Invalid UTC datetime: {value}")
+        dt: datetime = parse_dt(value)
         self.value = "to_utc_timestamp_tz('{}')".format(dt.isoformat())
 
     @property
