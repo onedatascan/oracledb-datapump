@@ -2,6 +2,8 @@ services:
   database:
     image: container-registry.oracle.com/database/enterprise:19.3.0.0
     container_name: datapump_db
+    env_file:
+      - .env
     ports:
       - 1521:1521
       - 8080:8080
