@@ -126,3 +126,19 @@ def test_schema_export(
         )
     pytestconfig.cache.set(DUMPFILE_CACHE, response.dumpfiles)
     assert response.state == "COMPLETED"
+
+
+@pytest.mark.parametrize("parallel, wait, no_data", [(2, False, False)])
+def test_schema_export_nowait(
+    connect_params, pytestconfig, from_schema, parallel, wait, no_data
+):
+    if wait:
+        response = run_schema_export_sync(
+            connect_params, from_schema, parallel, no_data
+        )
+    else:
+        response = run_schema_export_async(
+            connect_params, from_schema, parallel, no_data
+        )
+    pytestconfig.cache.set(DUMPFILE_CACHE, response.dumpfiles)
+    assert response.state == "COMPLETED"

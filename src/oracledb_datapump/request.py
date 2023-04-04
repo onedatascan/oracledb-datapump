@@ -222,7 +222,7 @@ class JobStatusHandler(RequestHandler, request_type=StatusRequest):
                 connection=connection,
                 job_name=request.payload.job_name,
                 job_owner=request.payload.job_owner,
-                status_type=JobStatusRequestType(request.payload.type),
+                status_type=JobStatusRequestType[request.payload.type],
             )
 
         return cls.build_status_response(
