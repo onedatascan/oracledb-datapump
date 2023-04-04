@@ -432,7 +432,7 @@ def _get_job_status_log(
             type(logfile),
         )
 
-    if not logfile.exists or logfile.size == 0:
+    if not logfile.exists:
         return JobStatusInfo(
             job_state=JobState.UNDEFINED,
             exception=[
@@ -440,6 +440,8 @@ def _get_job_status_log(
             ],
             logfile=logfile,
         )
+    elif logfile.size == 0:
+        return JobStatusInfo(job_state=JobState.UNDEFINED, logfile=logfile)
     else:
         logger.debug("Found logfile: %s size: %s", str(logfile.path), logfile.size)
 
