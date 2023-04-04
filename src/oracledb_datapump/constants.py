@@ -2,6 +2,7 @@ from typing import Final, Literal, Type, TypeAlias
 
 DEFAULT_DP_DIR: Final[str] = "DATA_PUMP_DIR"
 DATE_STR_FMT: Final[str] = "%Y%m%d%H%M%S%f"
+ISO_TIMESTAMP_MASK: Final[str] = 'YYYY-MM-DD"T"HH24:MI:SS.FF'
 DMP_CREATE_DATE_STR_FMT: Final[str] = "%c"
 SUB_SEQ_VAR: Final[str] = "%U"
 FLYWAY_SCHEMA_HISTORY_ENV: Final[str] = "FLYWAY_SCHEMA_HISTORY"

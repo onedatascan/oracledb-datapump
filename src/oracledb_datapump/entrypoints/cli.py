@@ -11,7 +11,7 @@ from oracledb_datapump.base import ConnectDict
 from oracledb_datapump.client import DataPump
 from oracledb_datapump.exceptions import BadRequest, UsageError
 from oracledb_datapump.log import DEFAULT_LOG_FMT, get_logger
-from oracledb_datapump.util import try_parse_dt
+from oracledb_datapump.util import parse_dt
 
 if TYPE_CHECKING:
     from oracledb_datapump.request import JobDirective
@@ -72,7 +72,7 @@ def main() -> int:
         help="Remap tablespace FROM_TBLSPC:TO_TBLSPC",
     )
     parser.add_argument(
-        "--flashback_utc", default=None, help="ISO format UTC timestamp"
+        "--flashback_time", default=None, help="ISO format timestamp"
     )
     parser.add_argument(
         "--directive", action="append", default=[], help="Datapump directive NAME:VALUE"
@@ -109,7 +109,7 @@ def main() -> int:
         exclude=args.exclude,
         remap_schema=args.remap_schema,
         remap_tablespace=args.remap_tablespace,
-        flashback_utc=args.flashback_utc,
+        flashback_time=args.flashback_time,
         directives=args.directive,
     )
 
@@ -155,7 +155,7 @@ def parse_directives(
     exclude: list[str] | None = None,
     remap_schema: list[str] | None = None,
     remap_tablespace: list[str] | None = None,
-    flashback_utc: datetime | str | None = None,
+    flashback_time: datetime | str | None = None,
     directives: list[str] | None = None,
 ) -> list["JobDirective"]:
 
@@ -206,10 +206,8 @@ def parse_directives(
                     " FROM_VALUE:TO_VALUE"
                 )
 
-    if flashback_utc:
-        dt = try_parse_dt(flashback_utc)
-        if isinstance(dt, str):
-            raise ValueError(f"Invalid UTC datetime: {flashback_utc}")
+    if flashback_time:
+        dt: datetime = parse_dt(flashback_time)
         job_directives.append({"name": "FLASHBACK_TIME", "value": dt.isoformat()})
 
     if directives:

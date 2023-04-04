@@ -3,6 +3,7 @@
 .PHONY: activate-venv build docker-build docker-push test clean-build clean-pyc clean all
 
 include .env
+include tests/.env
 export
 
 VENV?=.venv
@@ -30,6 +31,7 @@ docker-push:
 test: activate-venv
 	pip install -r tests/requirements.txt
 	docker-compose -f tests/docker-compose.yml up -d --wait
+	docker-compose -f tests/docker-compose.yml exec database ./setPassword.sh ${ORACLE_PWD}
 	pytest
 
 clean-build:

@@ -279,8 +279,8 @@ options:
                         Remap schema FROM_SCHEMA:TO_SCHEMA
   --remap_tablespace REMAP_TABLESPACE
                         Remap tablespace FROM_TBLSPC:TO_TBLSPC
-  --flashback_utc FLASHBACK_UTC
-                        ISO format UTC timestamp
+  --flashback_time FLASHBACK_TIME
+                        ISO format timestamp
   --directive DIRECTIVE
                         Datapump directive NAME:VALUE
 ```
@@ -397,7 +397,7 @@ ENCRYPTION_PASSWORD - args: value: {PASSWORD, DUAL}
 ESTIMATE - args: value: {BLOCKS, STATISTICS}
 ESTIMATE_ONLY - args: value: int
 FLASHBACK_SCN - args: value: int
-FLASHBACK_TIME - args: value: str | datetime # Must be UTC ISO format.
+FLASHBACK_TIME - args: value: str | datetime # Must be an ISO format timestamp.
 INCLUDE_METADATA - args: value: bool
 KEEP_MASTER - args: value: bool
 LOGTIME - args: value: {NONE, STATUS, LOGFILE, ALL}

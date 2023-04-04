@@ -64,13 +64,13 @@ def str_or_kv(x: str | tuple[str, str]) -> tuple[str, str | None]:
         return x
 
 
-def try_parse_dt(s: str | datetime) -> datetime | str:
+def parse_dt(s: str | datetime) -> datetime:
     if isinstance(s, datetime):
         return s
     try:
         return datetime.fromisoformat(s)
     except ValueError:
-        return s
+        raise ValueError(f"Invalid ISO datetime string: {s}")
 
 
 def parse_colon_delimited(val):
@@ -100,3 +100,7 @@ class JsonSerializer(json.JSONEncoder):
         if isinstance(o, datetime):
             return o.strftime(constants.DATE_STR_FMT)
         return super().default(o)
+
+
+def is_timezone_aware(dt: datetime) -> bool:
+    return dt.tzinfo is not None and dt.tzinfo.utcoffset(dt) is not None

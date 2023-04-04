@@ -15,7 +15,13 @@ from oracledb_datapump.commands import (
     WaitOnCompletion,
     WriteMetaData,
 )
-from oracledb_datapump.database import Connection, Schema, get_connection
+from oracledb_datapump.database import (
+    Connection,
+    Schema,
+    dt_to_scn,
+    get_connection,
+    to_db_timezone,
+)
 from oracledb_datapump.directives import DT, Directive, DirectiveBase, Extra
 from oracledb_datapump.exceptions import JobNotFound, UsageError
 from oracledb_datapump.files import (
@@ -251,7 +257,11 @@ class Job:
             self.has_directive(Directive.FLASHBACK_SCN)
             or self.has_directive(Directive.FLASHBACK_TIME)
         ):
-            self.directives.append(Directive.FLASHBACK_TIME(self.job_date))
+            logger.debug("Fetching SCN as of %s", self.job_date.isoformat())
+            export_scn = dt_to_scn(
+                to_db_timezone(self.job_date, self.connection), self.connection
+            )
+            self.directives.append(Directive.FLASHBACK_SCN(export_scn))
 
         for directive in self.directives:
             logger.debug("Adding directive metadata for: %s", directive)
