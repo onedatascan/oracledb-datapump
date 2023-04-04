@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 import functools
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Final, Iterable, TypeAlias, assert_never
+import operator
+from typing import Final, Iterable, TypeAlias, assert_never, cast
+from zoneinfo import ZoneInfo
 
 import oracledb
 
@@ -126,3 +129,46 @@ class SchemaHandler:
                 return next(iter(cursor.fetchall()), [""])[0]
         except DatabaseError:
             return None
+
+
+def get_db_timezone(connection: Connection) -> timezone:
+    with connection.cursor() as cursor:
+        cursor.execute(sql.SQL_GET_DB_TIMEZONE)
+        result = cast(tuple[str], cursor.fetchone())
+        tz_data = result[0]
+
+    # Oracle can return either a timezone name or an offset.
+    logger.debug("db timezone data: %s", tz_data)
+    # Check if a timezone name was returned and parse it
+    try:
+        tz_info = ZoneInfo(tz_data)
+        utc_offset = tz_info.utcoffset(datetime.utcnow())
+        assert utc_offset
+        tz = timezone(utc_offset)
+        logger.debug("db timezone: %s", tz)
+        return tz
+    except Exception:
+        pass
+    # Assume timezone was returned as a UTC offset
+    oper_fns = {"+": operator.pos, "-": operator.neg}
+    offset_parts = list(tz_data)
+    offset_oper = oper_fns[offset_parts.pop(0)]
+    offset_hour = int("".join(offset_parts[0: offset_parts.index(":")]))
+    offset_minute = int("".join(offset_parts[offset_parts.index(":") + 1:]))
+    tz = timezone(offset_oper(timedelta(hours=offset_hour, minutes=offset_minute)))
+    logger.debug("db timezone: %s", tz)
+    return tz
+
+
+def to_db_timezone(dt: datetime, connection: Connection) -> datetime:
+    logger.debug("received datetime: %s", dt.isoformat())
+    dt_with_db_tz = dt.astimezone(tz=get_db_timezone(connection))
+    logger.debug("db timezone converted: %s", dt_with_db_tz.isoformat())
+    return dt_with_db_tz
+
+
+def dt_to_scn(dt: datetime, connection: Connection) -> int:
+    with connection.cursor() as cursor:
+        cursor.execute(sql.SQL_TIMESTAMP_TO_SCN, parameters=[dt])
+        result = cast(tuple[int], cursor.fetchone())
+        return int(result[0])

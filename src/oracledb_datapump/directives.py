@@ -16,10 +16,10 @@ from typing import (
     TypeVar,
 )
 
-from oracledb_datapump import sql
+from oracledb_datapump import constants, sql
 from oracledb_datapump.base import JobMetaData, JobMode, Stage
 from oracledb_datapump.context import JobContext, OpenContext
-from oracledb_datapump.database import Schema
+from oracledb_datapump.database import Schema, to_db_timezone
 from oracledb_datapump.exceptions import InvalidObjectType
 from oracledb_datapump.files import OracleFile
 from oracledb_datapump.log import get_logger
@@ -200,6 +200,11 @@ class Parameter(DirectiveBase, Generic[T], name=None):
         return f"{self.__class__.__name__}({self.name}, {self.value})"
 
     def apply(self, ctx: OpenContext) -> None:
+        if isinstance(self.value, datetime):
+            dt = to_db_timezone(self.value, ctx.connection).replace(tzinfo=None)
+            self.value = (
+                f"to_timestamp('{dt.isoformat()}', '{constants.ISO_TIMESTAMP_MASK}')"
+            )  # type: ignore
         with ctx.connection.cursor() as cursor:
             cursor.callproc(
                 name="DBMS_DATAPUMP.SET_PARAMETER",
@@ -306,14 +311,13 @@ class FlashbackScn(ParameterTypeWithUserArgs[int], name="FLASHBACK_SCN"):
         return {"as_of": f"SCN({self.value})"}
 
 
-class FlashbackTime(ParameterTypeWithUserArgs[str], name="FLASHBACK_TIME"):
+class FlashbackTime(ParameterTypeWithUserArgs[datetime], name="FLASHBACK_TIME"):
     def __init__(self, value: str | datetime):
-        dt: datetime = parse_dt(value)
-        self.value = "to_utc_timestamp_tz('{}')".format(dt.isoformat())
+        self.value: datetime = parse_dt(value)
 
     @property
     def metadata(self) -> dict:
-        return {"as_of": self.value}
+        return {"as_of": self.value.isoformat()}
 
 
 class IncludeMetadata(ParameterTypeWithUserArgs[bool], name="INCLUDE_METADATA"):

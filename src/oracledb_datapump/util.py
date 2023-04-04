@@ -100,3 +100,7 @@ class JsonSerializer(json.JSONEncoder):
         if isinstance(o, datetime):
             return o.strftime(constants.DATE_STR_FMT)
         return super().default(o)
+
+
+def is_timezone_aware(dt: datetime) -> bool:
+    return dt.tzinfo is not None and dt.tzinfo.utcoffset(dt) is not None

@@ -85,6 +85,10 @@ SQL_GET_FLYWAY_SCHEMA_VERSION = """
     fetch first 1 rows only
 """
 
+SQL_GET_DB_TIMEZONE = "select dbtimezone from dual"
+
+SQL_TIMESTAMP_TO_SCN = "select timestamp_to_scn(:dt) from dual"
+
 PLSQL_DROP_ORPHAN = """
     -- drop master table for "orphaned job" if it exists
     begin
