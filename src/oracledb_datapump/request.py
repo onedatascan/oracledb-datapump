@@ -244,6 +244,7 @@ class PollRequestHandler(RequestHandler, request_type=PollRequest):
             connection=connection,
             job_name=request.payload.job_name,
             job_owner=request.payload.job_owner,
+            rate=request.payload.rate,
         )
         return cls.build_status_response(
             request.payload.job_name, request.payload.job_owner, status
