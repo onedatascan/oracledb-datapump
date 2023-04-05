@@ -13,7 +13,7 @@ import pydantic
 from oracledb_datapump import constants, sql
 from oracledb_datapump.base import JobMode, Operation
 from oracledb_datapump.context import JobContext, StatusContext
-from oracledb_datapump.database import DB_OBJECT_TYPE, Connection
+from oracledb_datapump.database import DB_OBJECT_TYPE
 from oracledb_datapump.exceptions import (
     BadRequest,
     DatabaseError,
@@ -322,19 +322,6 @@ class JobStatusInfo(StatusBase):
         else:
             self.exception = [str(exception)]
 
-    def populate_logfile(self, connection: Connection) -> None:
-        if self.job_description:
-            if self.job_description.log_file:
-                self.logfile = LogFile(self.job_description.log_file, connection)
-
-    def populate_dumpfiles(self, connection: Connection) -> None:
-        if self.job_status:
-            if self.job_status.files:
-                dumpfiles = [
-                    DumpFile(f.path, connection) for f in self.job_status.files
-                ]
-                self.dumpfiles = dumpfiles
-
 
 def get_job_status(
     ctx: JobContext | StatusContext,
@@ -395,11 +382,23 @@ def _build_api_job_status(
         job_state = cast(str, job_state_var.getvalue())
         logger.debug("job state: %s", job_state)
 
-    js = JobStatusInfo(job_state=JobState[job_state], **status_obj)
-    js.populate_logfile(ctx.connection)
-    js.populate_dumpfiles(ctx.connection)
+        logfile: LogFile | None = None
+        if job_description := cast(dict, status_obj.get("job_description")):
+            if log_path := job_description.get("log_file"):
+                logfile = LogFile(log_path, ctx.connection)
 
-    return js
+        dumpfiles: list[DumpFile] = []
+        if job_status := cast(dict, status_obj.get("job_status")):
+            if files := cast(list[dict], job_status.get("files")):
+                dumpfiles = [
+                    DumpFile(f["file_name"], ctx.connection)
+                    for f in files if f.get("file_name")
+                ]
+
+        status_obj["logfile"] = logfile
+        status_obj["dumpfiles"] = dumpfiles
+
+    return JobStatusInfo(job_state=JobState[job_state], **status_obj)
 
 
 def _build_log_job_status(
