@@ -343,10 +343,10 @@ def get_job_status(
     logfile: LogFile | str | None = None,
 ) -> JobStatusInfo:
     if request_type is JobStatusRequestType.LOG_STATUS:
-        return _get_job_status_log(ctx, logfile)
+        return _build_log_job_status(ctx, logfile)
     else:
         if isinstance(ctx, JobContext):
-            return _get_job_status_api(ctx, request_type, timeout)
+            return _build_api_job_status(ctx, request_type, timeout)
         else:
             raise UsageError(
                 "StatusContext cannot fetch Datapump API job status! Attach to active",
@@ -354,7 +354,7 @@ def get_job_status(
             )
 
 
-def _get_job_status_api(
+def _build_api_job_status(
     ctx: JobContext, request_type: JobStatusRequestType, timeout: int = -1
 ) -> JobStatusInfo:
     """
@@ -402,7 +402,7 @@ def _get_job_status_api(
     return js
 
 
-def _get_job_status_log(
+def _build_log_job_status(
     ctx: JobContext | StatusContext, logfile: LogFile | str | None = None
 ) -> JobStatusInfo:
     """
