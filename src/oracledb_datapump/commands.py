@@ -145,11 +145,6 @@ class WaitOnCompletion:
         )
         logger.info("Initial status: %s", pprint.pformat(status, sort_dicts=False))
 
-        status.populate_logfile(ctx.connection)
-        self.logfile = status.logfile
-        status.populate_dumpfiles(ctx.connection)
-        self.dumpfiles = status.dumpfiles
-
         start = perf_counter()
         logger.info("Waiting on completion.", ctx=ctx)
         with ctx.connection.cursor() as cursor:
@@ -171,11 +166,8 @@ class WaitOnCompletion:
             end - start,
             ctx=ctx,
         )
-        return JobStatusInfo(
-            job_state=JobState[job_state],
-            logfile=self.logfile,
-            dumpfiles=self.dumpfiles,
-        )
+        status.job_state = JobState[job_state]
+        return status
 
 
 class AddFiles:

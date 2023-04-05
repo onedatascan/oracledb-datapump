@@ -136,7 +136,6 @@ def run_schema_import_nowait(
     response = DataPump.poll_for_completion(
         connect_params, job_response.job_name, job_response.job_owner, rate=10
     )
-    response.dumpfiles = status_response.dumpfiles
     logger.info(response)
 
     return job_response

@@ -306,6 +306,7 @@ class JobStatusInfo(StatusBase):
     error: list[JobLogEntry] = pydantic.Field(default_factory=list)
     exception: list[str] = pydantic.Field(default_factory=list)
     logfile: LogFile | None = None
+    log_contents: list[str] = pydantic.Field(default_factory=list)
     dumpfiles: list[DumpFile] = pydantic.Field(default_factory=list)
 
     @pydantic.validator("mask", pre=True, always=False)
@@ -439,18 +440,34 @@ def _get_job_status_log(
                 str(FileNotFoundError(f"logfile not found: {str(logfile.path)}"))
             ],
             logfile=logfile,
+            log_contents=[],
         )
     elif logfile.size == 0:
-        return JobStatusInfo(job_state=JobState.UNDEFINED, logfile=logfile)
+        return JobStatusInfo(
+            job_state=JobState.UNDEFINED, logfile=logfile, log_contents=[]
+        )
     else:
         logger.debug("Found logfile: %s size: %s", str(logfile.path), logfile.size)
 
     logger.debug("Reading logfile: %s", str(logfile.path))
     with ora_open(logfile, "r") as lf:
-        log_contents = lf.read()
+        log_contents = lf.read().splitlines()
+
+    logger.debug("Locating dumpfiles in logfile: %s", str(logfile.path))
+    dumpfiles = []
+    try:
+        df_file_start_str = f"Dump file set for {ctx.job_owner}.{ctx.job_name} is:"
+        df_start_idx = log_contents.index(df_file_start_str)
+        dumpfiles = [
+            DumpFile(line.strip(), ctx.connection)
+            for line in log_contents[df_start_idx + 1:]
+            if line.endswith(".dmp")
+        ]
+    except ValueError:
+        logger.debug("Dumpfiles not found.")
 
     logger.debug("job_name: %s log file contents: %s", ctx.job_name, log_contents)
-    last_line = log_contents.splitlines()[-1]
+    last_line = log_contents[-1]
     logger.debug("Job log last line: %s", last_line)
 
     if found := JOB_LOG_STATUS_RE.search(last_line):
@@ -464,13 +481,28 @@ def _get_job_status_log(
     logger.debug("Job log result: %s", result)
 
     if result == "successfully completed":
-        return JobStatusInfo(job_state=JobState.COMPLETED, logfile=logfile)
+        return JobStatusInfo(
+            job_state=JobState.COMPLETED,
+            logfile=logfile,
+            log_contents=log_contents,
+            dumpfiles=dumpfiles
+        )
     elif result == "completed with" and errors:
-        js = JobStatusInfo(job_state=JobState.COMPLETED, logfile=logfile)
+        js = JobStatusInfo(
+            job_state=JobState.COMPLETED,
+            logfile=logfile,
+            log_contents=log_contents,
+            dumpfiles=dumpfiles,
+        )
         js.add_exception(DataPumpCompletedWithErrors(errors))
         return js
     else:
-        return JobStatusInfo(job_state=JobState.UNDEFINED, logfile=logfile)
+        return JobStatusInfo(
+            job_state=JobState.UNDEFINED,
+            logfile=logfile,
+            log_contents=log_contents,
+            dumpfiles=dumpfiles,
+        )
 
 
 T = TypeVar("T")

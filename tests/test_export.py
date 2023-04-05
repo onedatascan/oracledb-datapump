@@ -106,7 +106,6 @@ def run_schema_export_async(
     response = DataPump.poll_for_completion(
         connect_params, job_response.job_name, job_response.job_owner, rate=10
     )
-    response.dumpfiles = status_response.dumpfiles
     logger.info(response)
 
     return response
@@ -124,7 +123,10 @@ def test_schema_export(
         response = run_schema_export_async(
             connect_params, from_schema, parallel, no_data
         )
-    pytestconfig.cache.set(DUMPFILE_CACHE, response.dumpfiles)
+    assert response.detail
+    pytestconfig.cache.set(
+        DUMPFILE_CACHE, [str(df.path) for df in response.detail.dumpfiles]
+    )
     assert response.state == "COMPLETED"
 
 
@@ -140,5 +142,8 @@ def test_schema_export_nowait(
         response = run_schema_export_async(
             connect_params, from_schema, parallel, no_data
         )
-    pytestconfig.cache.set(DUMPFILE_CACHE, response.dumpfiles)
+    assert response.detail
+    pytestconfig.cache.set(
+        DUMPFILE_CACHE, [str(df.path) for df in response.detail.dumpfiles]
+    )
     assert response.state == "COMPLETED"

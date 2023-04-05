@@ -11,7 +11,7 @@ from oracledb_datapump import constants
 from oracledb_datapump.base import ConnectDict, JobMode, Operation
 from oracledb_datapump.database import Connection, get_connection
 from oracledb_datapump.directives import DirectiveBase
-from oracledb_datapump.files import DumpFile, LogFile, OracleFile
+from oracledb_datapump.files import DumpFile, LogFile, OracleFile, ora_open
 from oracledb_datapump.job import Job, get_info, get_status, poll_for_completion
 from oracledb_datapump.log import get_logger
 from oracledb_datapump.status import (
@@ -138,20 +138,12 @@ class RequestHandler:
         cls, job_name: str, job_owner: str, status: JobStatusInfo
     ) -> Response:
         state = status.job_state.value if status.job_state else None
-        logfile_exists = not any("logfile not found" in e for e in status.exception)
-        logfile = str(status.logfile.path) if status.logfile else None
-        dumpfiles = (
-            [str(df.path) for df in status.dumpfiles] if status.dumpfiles else []
-        )
 
         return Response(
             job_name=job_name,
             job_owner=job_owner,
             state=state,
-            info=status,
-            logfile=logfile,
-            logfile_exists=logfile_exists,
-            dumpfiles=dumpfiles,
+            detail=status,
         )
 
     @classmethod
@@ -266,10 +258,7 @@ class Response(pydantic.BaseModel):
         "NOT_RUNNING",
         "ERROR",
     ] | None
-    info: JobStatusInfo
-    logfile: str | None
-    logfile_exists: bool
-    dumpfiles: list[str]
+    detail: JobStatusInfo | None
 
     class Config:
         use_enum_values = True
