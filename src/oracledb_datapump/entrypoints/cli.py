@@ -132,10 +132,12 @@ def main() -> int:
     request = {"connection": connect_dict, "request": "SUBMIT", "payload": payload}
 
     response = DataPump.submit(json.dumps(request))
-    logfile = DataPump.get_logfile(
-        logfile=str(response.logfile),
-        connection=connect_dict,
-    )
+    logfile = None
+    if response.detail and response.detail.logfile:
+        logfile = DataPump.get_logfile(
+            logfile=str(response.detail.logfile),
+            connection=connect_dict,
+        )
 
     if response.state == "COMPLETED":
         logger.info(response)

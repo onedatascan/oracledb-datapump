@@ -13,7 +13,7 @@ import pydantic
 from oracledb_datapump import constants, sql
 from oracledb_datapump.base import JobMode, Operation
 from oracledb_datapump.context import JobContext, StatusContext
-from oracledb_datapump.database import DB_OBJECT_TYPE, Connection
+from oracledb_datapump.database import DB_OBJECT_TYPE
 from oracledb_datapump.exceptions import (
     BadRequest,
     DatabaseError,
@@ -306,6 +306,7 @@ class JobStatusInfo(StatusBase):
     error: list[JobLogEntry] = pydantic.Field(default_factory=list)
     exception: list[str] = pydantic.Field(default_factory=list)
     logfile: LogFile | None = None
+    log_contents: list[str] = pydantic.Field(default_factory=list)
     dumpfiles: list[DumpFile] = pydantic.Field(default_factory=list)
 
     @pydantic.validator("mask", pre=True, always=False)
@@ -321,19 +322,6 @@ class JobStatusInfo(StatusBase):
         else:
             self.exception = [str(exception)]
 
-    def populate_logfile(self, connection: Connection) -> None:
-        if self.job_description:
-            if self.job_description.log_file:
-                self.logfile = LogFile(self.job_description.log_file, connection)
-
-    def populate_dumpfiles(self, connection: Connection) -> None:
-        if self.job_status:
-            if self.job_status.files:
-                dumpfiles = [
-                    DumpFile(f.path, connection) for f in self.job_status.files
-                ]
-                self.dumpfiles = dumpfiles
-
 
 def get_job_status(
     ctx: JobContext | StatusContext,
@@ -342,10 +330,10 @@ def get_job_status(
     logfile: LogFile | str | None = None,
 ) -> JobStatusInfo:
     if request_type is JobStatusRequestType.LOG_STATUS:
-        return _get_job_status_log(ctx, logfile)
+        return _build_log_job_status(ctx, logfile)
     else:
         if isinstance(ctx, JobContext):
-            return _get_job_status_api(ctx, request_type, timeout)
+            return _build_api_job_status(ctx, request_type, timeout)
         else:
             raise UsageError(
                 "StatusContext cannot fetch Datapump API job status! Attach to active",
@@ -353,7 +341,7 @@ def get_job_status(
             )
 
 
-def _get_job_status_api(
+def _build_api_job_status(
     ctx: JobContext, request_type: JobStatusRequestType, timeout: int = -1
 ) -> JobStatusInfo:
     """
@@ -394,14 +382,26 @@ def _get_job_status_api(
         job_state = cast(str, job_state_var.getvalue())
         logger.debug("job state: %s", job_state)
 
-    js = JobStatusInfo(job_state=JobState[job_state], **status_obj)
-    js.populate_logfile(ctx.connection)
-    js.populate_dumpfiles(ctx.connection)
+        logfile: LogFile | None = None
+        if job_description := cast(dict, status_obj.get("job_description")):
+            if log_path := job_description.get("log_file"):
+                logfile = LogFile(log_path, ctx.connection)
 
-    return js
+        dumpfiles: list[DumpFile] = []
+        if job_status := cast(dict, status_obj.get("job_status")):
+            if files := cast(list[dict], job_status.get("files")):
+                dumpfiles = [
+                    DumpFile(f["file_name"], ctx.connection)
+                    for f in files if f.get("file_name")
+                ]
+
+        status_obj["logfile"] = logfile
+        status_obj["dumpfiles"] = dumpfiles
+
+    return JobStatusInfo(job_state=JobState[job_state], **status_obj)
 
 
-def _get_job_status_log(
+def _build_log_job_status(
     ctx: JobContext | StatusContext, logfile: LogFile | str | None = None
 ) -> JobStatusInfo:
     """
@@ -432,23 +432,41 @@ def _get_job_status_log(
             type(logfile),
         )
 
-    if not logfile.exists or logfile.size == 0:
+    if not logfile.exists:
         return JobStatusInfo(
             job_state=JobState.UNDEFINED,
             exception=[
                 str(FileNotFoundError(f"logfile not found: {str(logfile.path)}"))
             ],
             logfile=logfile,
+            log_contents=[],
+        )
+    elif logfile.size == 0:
+        return JobStatusInfo(
+            job_state=JobState.UNDEFINED, logfile=logfile, log_contents=[]
         )
     else:
         logger.debug("Found logfile: %s size: %s", str(logfile.path), logfile.size)
 
     logger.debug("Reading logfile: %s", str(logfile.path))
     with ora_open(logfile, "r") as lf:
-        log_contents = lf.read()
+        log_contents = lf.read().splitlines()
+
+    logger.debug("Locating dumpfiles in logfile: %s", str(logfile.path))
+    dumpfiles = []
+    try:
+        df_file_start_str = f"Dump file set for {ctx.job_owner}.{ctx.job_name} is:"
+        df_start_idx = log_contents.index(df_file_start_str)
+        dumpfiles = [
+            DumpFile(line.strip(), ctx.connection)
+            for line in log_contents[df_start_idx + 1:]
+            if line.endswith(".dmp")
+        ]
+    except ValueError:
+        logger.debug("Dumpfiles not found.")
 
     logger.debug("job_name: %s log file contents: %s", ctx.job_name, log_contents)
-    last_line = log_contents.splitlines()[-1]
+    last_line = log_contents[-1]
     logger.debug("Job log last line: %s", last_line)
 
     if found := JOB_LOG_STATUS_RE.search(last_line):
@@ -462,13 +480,28 @@ def _get_job_status_log(
     logger.debug("Job log result: %s", result)
 
     if result == "successfully completed":
-        return JobStatusInfo(job_state=JobState.COMPLETED, logfile=logfile)
+        return JobStatusInfo(
+            job_state=JobState.COMPLETED,
+            logfile=logfile,
+            log_contents=log_contents,
+            dumpfiles=dumpfiles
+        )
     elif result == "completed with" and errors:
-        js = JobStatusInfo(job_state=JobState.COMPLETED, logfile=logfile)
+        js = JobStatusInfo(
+            job_state=JobState.COMPLETED,
+            logfile=logfile,
+            log_contents=log_contents,
+            dumpfiles=dumpfiles,
+        )
         js.add_exception(DataPumpCompletedWithErrors(errors))
         return js
     else:
-        return JobStatusInfo(job_state=JobState.UNDEFINED, logfile=logfile)
+        return JobStatusInfo(
+            job_state=JobState.UNDEFINED,
+            logfile=logfile,
+            log_contents=log_contents,
+            dumpfiles=dumpfiles,
+        )
 
 
 T = TypeVar("T")
