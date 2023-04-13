@@ -165,16 +165,30 @@ def lambda_handler(event: dict, context: LambdaContext) -> HTTPResponse:
     """
     logger.set_correlation_id(context.aws_request_id)
 
+    envelope_validation_exc: ValidationError | None = None
+    if ENVELOPE:
+        # Extract the request from outer envelope supplied as an env arg. Valid args
+        # could potentially be any one of:
+        # https://awslabs.github.io/aws-lambda-powertools-python/2.9.1/utilities/parser/#built-in-models
+        # Currently the expectation is that the outer envelope is a AlbModel or
+        # APIGatewayProxyEventModel
+        logger.debug("ENVELOPE=%s", ENVELOPE)
+        expected_envelope = getattr(models, ENVELOPE)
+        try:
+            envelope_request = parse(event=event, model=expected_envelope)
+            return envelope_handler(envelope_request, context)
+        except ValidationError as e:
+            # We might have been passed an un-enveloped request
+            logger.info(
+                f"Envelope validation failed for {ENVELOPE}! Attempting raw request "
+                "validation..."
+            )
+            envelope_validation_exc = e
+
     try:
-        if ENVELOPE:
-            # Extract the request from outer envelope supplied as an env arg. Valid args
-            # could potentially be any one of:
-            # https://awslabs.github.io/aws-lambda-powertools-python/2.9.1/utilities/parser/#built-in-models
-            # Currently the expectation is that the outer envelope is a AlbModel or
-            # APIGatewayProxyEventModel
-            envelope = getattr(models, ENVELOPE)
-            return envelope_handler(parse(event=event, model=envelope), context)
-        else:
-            return request_handler(parse_obj_as(Request, event), context)
-    except ValidationError as e:
-        return exception_handler(BadRequest(e))
+        return request_handler(parse_obj_as(Request, event), context)
+    except ValidationError as raw_validation_exc:
+        exc = BadRequest(
+            {"RawValidationException": raw_validation_exc, "EnvelopeValidationException": envelope_validation_exc}
+        )
+        return exception_handler(exc)
