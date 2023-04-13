@@ -109,7 +109,7 @@ class Envelope(BaseModel, extra=Extra.allow):
 
 
 def request_handler(event: Request, context: LambdaContext) -> HTTPResponse:
-    # logger.debug("RequestModel: %s", repr(event))
+    logger.debug("RequestModel: %s", repr(event))
     password = parse_secret(event)
     event.connection.password = SecretStr(password)
 
