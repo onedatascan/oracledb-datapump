@@ -121,6 +121,7 @@ class FileHandler:
 
     def __init_subclass__(cls, file_type: type[object], **kwargs) -> None:
         super().__init_subclass__(**kwargs)
+        logger.debug("Initializing FileHandler type: %s", file_type)
         cls.handlers[file_type] = cls
 
     def handle(self, file: str) -> None:
@@ -130,12 +131,14 @@ class FileHandler:
             handler = self.handlers[str]
         else:
             handler = self.handlers[str]
+        logger.debug("Handling dumpfile arg: %s", file)
         handler.handle(file, self.ctx)
 
     def produce(self) -> set[DumpFile]:
         if self.ctx.operation is Operation.IMPORT and self._dumpfiles is None:
             raise UsageError("Dumpfiles argument required for import job")
 
+        logger.debug("Producing dumpfile set from args: %s", self._dumpfiles)
         dumpfile_set = DumpFileSet(*self._dumpfiles)
         dumpfile_set.prepare(
             connection=self.ctx.connection,
