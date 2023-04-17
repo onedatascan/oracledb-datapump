@@ -160,11 +160,11 @@ def lambda_handler(event: dict, context: LambdaContext) -> HTTPResponse:
         "payload": {
             "operation": "EXPORT",
             "mode": "SCHEMA",
-            "directives": {
+            "directives": [
                 {"name": "PARALLEL", "value": 2},
                 {"name": "COMPRESSION", "value": "ALL"},
                 {"name": "INCLUDE_SCHEMA", "value": "HR"}
-            }
+            ]
         }
     sample status:
     event = {
