@@ -72,6 +72,7 @@ class StatusPayload(pydantic.BaseModel):
     job_name: str
     job_owner: str
     type: Literal["ALL", "STATUS", "DESC", "ERROR", "LOG_STATUS"] = "LOG_STATUS"
+    include_detail: bool = True
 
 
 class PollPayload(pydantic.BaseModel):
@@ -135,7 +136,7 @@ class RequestHandler:
 
     @classmethod
     def build_status_response(
-        cls, job_name: str, job_owner: str, status: JobStatusInfo
+        cls, job_name: str, job_owner: str, include_detail: bool, status: JobStatusInfo
     ) -> Response:
         state = status.job_state.value if status.job_state else None
 
@@ -143,7 +144,7 @@ class RequestHandler:
             job_name=job_name,
             job_owner=job_owner,
             state=state,
-            detail=status,
+            detail=status if include_detail else None,
         )
 
     @classmethod
@@ -190,7 +191,7 @@ class JobRequestHandler(RequestHandler, request_type=SubmitRequest):
         assert job.job_name
         assert job.job_owner
 
-        return cls.build_status_response(job.job_name, job.job_owner, status)
+        return cls.build_status_response(job.job_name, job.job_owner, True, status)
 
 
 class JobStatusHandler(RequestHandler, request_type=StatusRequest):
@@ -218,7 +219,10 @@ class JobStatusHandler(RequestHandler, request_type=StatusRequest):
             )
 
         return cls.build_status_response(
-            request.payload.job_name, request.payload.job_owner, status
+            request.payload.job_name,
+            request.payload.job_owner,
+            request.payload.include_detail,
+            status
         )
 
 
@@ -239,7 +243,7 @@ class PollRequestHandler(RequestHandler, request_type=PollRequest):
             rate=request.payload.rate,
         )
         return cls.build_status_response(
-            request.payload.job_name, request.payload.job_owner, status
+            request.payload.job_name, request.payload.job_owner, True, status
         )
 
 
