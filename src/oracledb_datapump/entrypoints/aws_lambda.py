@@ -150,7 +150,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> HTTPResponse:
     sample submit:
     event = {
         "connection": {
-            "user": HR,
+            "username": HR,
             "password": "This can be a string or a secrets manager ARN to a secret
                          with a PASSWORD field",
             "host": "somehost@domain.com",
@@ -169,7 +169,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> HTTPResponse:
     sample status:
     event = {
         "connection": {
-            "user": HR,
+            "username": HR,
             "password": "This can be a string or a secrets manager ARN to a secret
                          with a PASSWORD field",
             "host": "somehost@domain.com",

@@ -11,7 +11,7 @@ from oracledb_datapump import constants
 from oracledb_datapump.base import ConnectDict, JobMode, Operation
 from oracledb_datapump.database import Connection, get_connection
 from oracledb_datapump.directives import DirectiveBase
-from oracledb_datapump.files import DumpFile, LogFile, OracleFile, ora_open
+from oracledb_datapump.files import DumpFile, LogFile, OracleFile
 from oracledb_datapump.job import Job, get_info, get_status, poll_for_completion
 from oracledb_datapump.log import get_logger
 from oracledb_datapump.status import (
@@ -52,7 +52,7 @@ class JobDirectiveModel(pydantic.BaseModel):
 
 
 class ConnectModel(pydantic.BaseModel):
-    user: str
+    username: str
     password: pydantic.SecretStr
     host: str
     database: str
@@ -150,7 +150,7 @@ class RequestHandler:
     @classmethod
     def build_connect_dict(cls, connection: ConnectModel):
         return ConnectDict(
-            user=connection.user,
+            username=connection.username,
             password=connection.password.get_secret_value(),
             host=connection.host,
             database=connection.database,
@@ -222,7 +222,7 @@ class JobStatusHandler(RequestHandler, request_type=StatusRequest):
             request.payload.job_name,
             request.payload.job_owner,
             request.payload.include_detail,
-            status
+            status,
         )
 
 

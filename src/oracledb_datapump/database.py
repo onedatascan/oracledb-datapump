@@ -47,14 +47,14 @@ class _Connection(Connection):
 
     def __str__(self):
         return (
-            f"DatabaseContext(id={id(self)}, user={self.username}, "
+            f"DatabaseContext(id={id(self)}, username={self.username}, "
             f"host={self._host}, database={self._database})"
         )
 
     @classmethod
     def from_dict(cls, cd: ConnectDict):
         return connect(
-            user=cd["user"],
+            user=cd["username"],
             password=cd["password"],
             dsn=f"{cd['host']}/{cd['database']}",
         )
