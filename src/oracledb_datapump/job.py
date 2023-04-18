@@ -104,7 +104,12 @@ class Job:
             ident = self.job_owner.upper() if self.job_owner else ""
 
         if self.tag:
-            ident += constants.NAME_DELIM + self.tag
+            ident += (
+                constants.NAME_DELIM
+                + constants.TAG_DELIM
+                + self.tag
+                + constants.TAG_DELIM
+            )
 
         # Datapump job_name has a max char limit of 128
         self._job_name = string_shortener(

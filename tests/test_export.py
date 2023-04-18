@@ -30,7 +30,7 @@ def run_schema_export_sync(
             "operation": "EXPORT",
             "mode": "SCHEMA",
             "wait": True,
-            "tag": "TEST",
+            "tag": "WAIT-TEST",
             "directives": [
                 {"name": "PARALLEL", "value": parallel},
                 {"name": "COMPRESSION", "value": "ALL"},
@@ -72,6 +72,7 @@ def run_schema_export_async(
             "operation": "EXPORT",
             "mode": "SCHEMA",
             "wait": False,
+            "tag": "NOWAIT-TEST",
             "directives": [
                 {"name": "PARALLEL", "value": parallel},
                 {"name": "COMPRESSION", "value": "ALL"},
