@@ -4,7 +4,7 @@ import pytest
 
 from oracledb_datapump.client import DataPump
 from oracledb_datapump.database import ConnectDict
-from oracledb_datapump.request import StatusRequest, SubmitRequest
+from oracledb_datapump.request import Request
 from tests.constants import DUMPFILE_CACHE
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ def run_schema_export_sync(
         }
 
     logger.debug("Request data is: %s", job_request)
-    response = DataPump.submit(SubmitRequest(**job_request))
+    response = DataPump.submit(Request(**job_request))
     logger.info(response)
 
     return response
@@ -88,7 +88,7 @@ def run_schema_export_async(
         }
 
     logger.debug("Request data is: %s", job_request)
-    job_response = DataPump.submit(SubmitRequest(**job_request))
+    job_response = DataPump.submit(Request(**job_request))
     logger.info("job_response: %s", job_response)
 
     status_request = {
@@ -101,7 +101,7 @@ def run_schema_export_async(
         },
     }
 
-    status_response = DataPump.submit(StatusRequest(**status_request))
+    status_response = DataPump.submit(Request(**status_request))
     logger.info("status_response: %s", status_response)
 
     response = DataPump.poll_for_completion(

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import abc
 from datetime import datetime
 from enum import Enum
-from typing import Literal, NotRequired, TypeAlias, TypedDict
+from typing import Generic, Literal, NotRequired, TypeAlias, TypeVar, TypedDict
 
 import pydantic
+import pydantic.generics
 
 from oracledb_datapump import constants
 from oracledb_datapump.base import ConnectDict, JobMode, Operation
@@ -59,7 +59,12 @@ class ConnectModel(pydantic.BaseModel):
     port: int = pydantic.Field(default=constants.DEFAULT_SQLNET_PORT)
 
 
-class SubmitPayload(pydantic.BaseModel):
+class Payload(pydantic.BaseModel):
+    class Config:
+        extra = pydantic.Extra.forbid
+
+
+class SubmitPayload(Payload):
     operation: Literal["IMPORT", "EXPORT"]
     mode: Literal["FULL", "SCHEMA", "TABLE", "TABLESPACE"]
     wait: bool = False
@@ -68,27 +73,29 @@ class SubmitPayload(pydantic.BaseModel):
     tag: str | None = None
 
 
-class StatusPayload(pydantic.BaseModel):
+class StatusPayload(Payload):
     job_name: str
     job_owner: str
     type: Literal["ALL", "STATUS", "DESC", "ERROR", "LOG_STATUS"] = "LOG_STATUS"
     include_detail: bool = True
 
 
-class PollPayload(pydantic.BaseModel):
+class PollPayload(Payload):
     job_name: str
     job_owner: str
     rate: int
 
 
-class RequestBase(pydantic.BaseModel, abc.ABC):
-    connection: ConnectModel
-    request: Literal["SUBMIT", "STATUS", "POOL"]
-    payload: SubmitPayload | StatusPayload | PollPayload
+# Cant use the superclass here because Pydantic seems unable to figure out
+# which subclass to parse the data as.
+PayloadT = TypeVar("PayloadT", SubmitPayload, StatusPayload, PollPayload)
+RequestT = Literal["SUBMIT", "STATUS", "POLL"]
 
-    class Config:
-        arbitrary_types_allowed = True
-        smart_union = True
+
+class Request(pydantic.generics.GenericModel, Generic[PayloadT]):
+    connection: ConnectModel
+    request: RequestT
+    payload: PayloadT
 
     @pydantic.validator("payload")
     def check_consistency(cls, value, values):
@@ -102,28 +109,10 @@ class RequestBase(pydantic.BaseModel, abc.ABC):
         return value
 
 
-class SubmitRequest(RequestBase):
-    request: Literal["SUBMIT"]
-    payload: SubmitPayload
-
-
-class StatusRequest(RequestBase):
-    request: Literal["STATUS"]
-    payload: StatusPayload
-
-
-class PollRequest(RequestBase):
-    request: Literal["POLL"]
-    payload: PollPayload
-
-
-Request = SubmitRequest | StatusRequest | PollRequest
-
-
 class RequestHandler:
     handlers = {}
 
-    def __init_subclass__(cls, request_type: type[object], **kwargs) -> None:
+    def __init_subclass__(cls, request_type: RequestT, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
         cls.handlers[request_type] = cls
 
@@ -132,7 +121,7 @@ class RequestHandler:
         logger.debug("Received request type: %s", type(request))
         logger.info("Received request: %s", request)
 
-        return self.handlers[type(request)].handle(request)
+        return self.handlers[request.request].handle(request)
 
     @classmethod
     def build_status_response(
@@ -158,9 +147,9 @@ class RequestHandler:
         )
 
 
-class JobRequestHandler(RequestHandler, request_type=SubmitRequest):
+class JobRequestHandler(RequestHandler, request_type="SUBMIT"):
     @classmethod
-    def handle(cls, request: SubmitRequest) -> Response:
+    def handle(cls, request: Request) -> Response:
         logger.debug("Handling %s", type(request))
 
         connection = request.connection
@@ -194,9 +183,9 @@ class JobRequestHandler(RequestHandler, request_type=SubmitRequest):
         return cls.build_status_response(job.job_name, job.job_owner, True, status)
 
 
-class JobStatusHandler(RequestHandler, request_type=StatusRequest):
+class JobStatusHandler(RequestHandler, request_type="STATUS"):
     @classmethod
-    def handle(cls, request: StatusRequest) -> Response:
+    def handle(cls, request: Request) -> Response:
         logger.debug("Handling %s", type(request))
 
         connection = request.connection
@@ -226,9 +215,9 @@ class JobStatusHandler(RequestHandler, request_type=StatusRequest):
         )
 
 
-class PollRequestHandler(RequestHandler, request_type=PollRequest):
+class PollRequestHandler(RequestHandler, request_type="POLL"):
     @classmethod
-    def handle(cls, request: PollRequest) -> Response:
+    def handle(cls, request: Request) -> Response:
         logger.debug("Handling %s", type(request))
 
         connection = request.connection

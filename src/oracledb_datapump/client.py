@@ -8,7 +8,6 @@ from oracledb_datapump.files import DumpFile, OracleFile, SupportedOpenModes, or
 from oracledb_datapump.log import get_logger
 from oracledb_datapump.request import (
     JsonStr,
-    PollRequest,
     Request,
     RequestHandler,
     Response,
@@ -73,4 +72,4 @@ class DataPump:
             "request": "POLL",
             "payload": {"job_name": job_name, "job_owner": job_owner, "rate": rate},
         }
-        return cls.submit(PollRequest(**request))
+        return cls.submit(Request(**request))
