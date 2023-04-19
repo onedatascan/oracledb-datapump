@@ -42,7 +42,7 @@ def main() -> int:
 
     parser.add_argument("--username", required=True, help="Oracle admin username")
     parser.add_argument("--password", required=True, help="Oracle admin password")
-    parser.add_argument("--host", required=True, help="Database service host")
+    parser.add_argument("--hostname", required=True, help="Database service host")
     parser.add_argument("--database", required=True, help="Database service name")
     parser.add_argument(
         "--parallel", default=1, help="Number of datapump workers", type=int
@@ -125,7 +125,7 @@ def main() -> int:
     connect_dict: ConnectDict = {
         "username": str(args.username),
         "password": str(args.password),
-        "host": str(args.host),
+        "hostname": str(args.hostname),
         "database": str(args.database),
     }
 

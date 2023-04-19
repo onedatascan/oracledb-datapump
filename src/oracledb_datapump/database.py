@@ -42,13 +42,13 @@ class _Connection(Connection):
         super().__init__(*args, **kwargs)
 
         self._password = ""
-        self._host = self.dsn.split("/")[0]
+        self._hostname = self.dsn.split("/")[0]
         self._database = self.dsn.split("/")[1]
 
     def __str__(self):
         return (
             f"DatabaseContext(id={id(self)}, username={self.username}, "
-            f"host={self._host}, database={self._database})"
+            f"hostname={self._hostname}, database={self._database})"
         )
 
     @classmethod
@@ -56,7 +56,7 @@ class _Connection(Connection):
         return connect(
             user=cd["username"],
             password=cd["password"],
-            dsn=f"{cd['host']}/{cd['database']}",
+            dsn=f"{cd['hostname']}/{cd['database']}",
         )
 
 

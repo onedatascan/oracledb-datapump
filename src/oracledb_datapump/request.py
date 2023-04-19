@@ -54,7 +54,7 @@ class JobDirectiveModel(pydantic.BaseModel):
 class ConnectModel(pydantic.BaseModel):
     username: str
     password: pydantic.SecretStr
-    host: str
+    hostname: str
     database: str
     port: int = pydantic.Field(default=constants.DEFAULT_SQLNET_PORT)
 
@@ -152,7 +152,7 @@ class RequestHandler:
         return ConnectDict(
             username=connection.username,
             password=connection.password.get_secret_value(),
-            host=connection.host,
+            hostname=connection.hostname,
             database=connection.database,
             port=connection.port,
         )

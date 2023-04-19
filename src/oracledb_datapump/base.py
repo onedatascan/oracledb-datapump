@@ -58,6 +58,6 @@ class JobMetaData(TypedDict):
 class ConnectDict(TypedDict):
     username: str
     password: str
-    host: str
+    hostname: str
     database: str
     port: NotRequired[int]

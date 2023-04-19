@@ -96,7 +96,7 @@ def db_ctx(env_config):
         ConnectDict(
             username=str(env_config["ADMIN_USER"]),
             password=str(env_config["ORACLE_PWD"]),
-            host=str(env_config["DB_HOST"]),
+            hostname=str(env_config["DB_HOST"]),
             database=str(env_config["DATABASE"]),
         )
     )
@@ -109,7 +109,7 @@ def connect_params(env_config):
     return ConnectDict(
         username=str(env_config["ADMIN_USER"]),
         password=str(env_config["ORACLE_PWD"]),
-        host=str(env_config["DB_HOST"]),
+        hostname=str(env_config["DB_HOST"]),
         database=str(env_config["DATABASE"]),
     )
 

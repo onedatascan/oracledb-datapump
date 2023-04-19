@@ -153,7 +153,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> HTTPResponse:
             "username": HR,
             "password": "This can be a string or a secrets manager ARN to a secret
                          with a PASSWORD field",
-            "host": "somehost@domain.com",
+            "hostname": "somehost@domain.com",
             "database": "ORCLPDB1"
         },
         "request": "SUBMIT",
@@ -172,7 +172,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> HTTPResponse:
             "username": HR,
             "password": "This can be a string or a secrets manager ARN to a secret
                          with a PASSWORD field",
-            "host": "somehost@domain.com",
+            "hostname": "somehost@domain.com",
             "database": "ORCLPDB1"
         },
         "request": "STATUS",
