@@ -29,7 +29,6 @@ def run_schema_import_wait(
         no_user,
     )
 
-    # _dumpfiles: list[str] = dumpfiles.split(",")
     _dumpfiles = dumpfiles
 
     job_request = {
@@ -86,7 +85,7 @@ def run_schema_import_nowait(
         no_user,
     )
 
-    _dumpfiles: list[str] = dumpfiles.split(",")
+    _dumpfiles = dumpfiles
 
     job_request = {
         "connection": connect_params,
@@ -99,7 +98,6 @@ def run_schema_import_nowait(
             "directives": [
                 {"name": "PARALLEL", "value": parallel},
                 {"name": "TABLE_EXISTS_ACTION", "value": "REPLACE"},
-                {"name": "COMPRESSION", "value": "ALL"},
                 {"name": "OID", "value": False},
                 {"name": "REMAP_SCHEMA", "old_value": from_schema, "value": to_schema},
                 {
@@ -112,8 +110,8 @@ def run_schema_import_nowait(
     }
 
     if no_user:
-        job_request["payload"]["directives"]["filters"].append(  # type: ignore
-            {"name": "EXCLUDE_OBJECT_TYPE", "predicate": "USER"}
+        job_request["payload"]["directives"].append(  # type: ignore
+            {"name": "EXCLUDE_OBJECT_TYPE", "value": "USER"}
         )
 
     logger.debug("Request data is: %s", job_request)
@@ -138,7 +136,7 @@ def run_schema_import_nowait(
     )
     logger.info(response)
 
-    return job_response
+    return response
 
 
 @pytest.mark.parametrize("parallel, wait, no_user", [(2, True, True)])
