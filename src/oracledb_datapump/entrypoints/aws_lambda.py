@@ -19,14 +19,13 @@ from aws_lambda_powertools.utilities.parser import (
 from aws_lambda_powertools.utilities.parser.pydantic import (
     Extra,
     Json,
-    SecretStr,
     parse_obj_as,
 )
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
 from oracledb_datapump.client import DataPump
 from oracledb_datapump.constants import SERVICE_NAME
-from oracledb_datapump.request import Request
+from oracledb_datapump.request import ConnectModel, Request
 
 logger = Logger(service=SERVICE_NAME, level=os.getenv("LOG_LEVEL", "INFO"))
 copy_config_to_registered_loggers(logger)
@@ -104,18 +103,30 @@ def exception_handler(ex: Exception, extra: dict[str, json_types] | None = None)
         )
 
 
-def parse_secret(event: Request) -> str:
-    password = event.connection.password.get_secret_value()
-    if password.startswith("arn:"):
-        secret = parameters.get_secret(password, transform="json")
-        password = secret["PASSWORD"]  # type: ignore
-    else:
-        logger.warning("Password supplied as lambda arg!")
-    return password
+class ConnectWithSecretModel(ConnectModel):
+    secret: str | None
+
+    @root_validator(pre=True)
+    def populate_from_secret(cls, values):
+        if "secret" in values:
+            try:
+                secret_value = parameters.get_secret(values["secret"], transform="json")
+            except Exception as e:
+                raise ValueError(
+                    f"Failed to fetch or parse secret: {values['secret']} "
+                    f"reason: {str(e)}"
+                ) from e
+            else:
+                values.update(secret_value)
+        return values
+
+
+class LambdaRequest(Request):
+    connection: ConnectWithSecretModel
 
 
 class Envelope(BaseModel, extra=Extra.allow):
-    body: Json[Request]
+    body: Json[LambdaRequest]
     isBase64Encoded: bool
 
     @root_validator(pre=True)
@@ -128,11 +139,8 @@ class Envelope(BaseModel, extra=Extra.allow):
         return values
 
 
-def request_handler(event: Request, context: LambdaContext) -> HTTPResponse:
-    logger.debug("RequestModel: %s", repr(event))
-    password = parse_secret(event)
-    event.connection.password = SecretStr(password)
-
+def request_handler(event: LambdaRequest, context: LambdaContext) -> HTTPResponse:
+    logger.debug("LambdaRequest: %s", repr(event))
     try:
         return build_response(HTTPStatus.OK, json.loads(DataPump.submit(event).json()))
     except Exception as e:
@@ -141,7 +149,7 @@ def request_handler(event: Request, context: LambdaContext) -> HTTPResponse:
 
 @event_parser(model=Envelope)
 def envelope_handler(event: Envelope, context: LambdaContext) -> HTTPResponse:
-    return request_handler(parse_obj_as(Request, event.body), context)
+    return request_handler(parse_obj_as(LambdaRequest, event.body), context)
 
 
 @logger.inject_lambda_context
@@ -151,10 +159,10 @@ def lambda_handler(event: dict, context: LambdaContext) -> HTTPResponse:
     event = {
         "connection": {
             "username": HR,
-            "password": "This can be a string or a secrets manager ARN to a secret
-                         with a PASSWORD field",
+            "password": "HR",
             "hostname": "somehost@domain.com",
-            "database": "ORCLPDB1"
+            "database": "ORCLPDB1",
+            "secret": "Optional AWS SecretsManger secret name/arn with the above fields"
         },
         "request": "SUBMIT",
         "payload": {
@@ -170,10 +178,10 @@ def lambda_handler(event: dict, context: LambdaContext) -> HTTPResponse:
     event = {
         "connection": {
             "username": HR,
-            "password": "This can be a string or a secrets manager ARN to a secret
-                         with a PASSWORD field",
+            "password": "HR",
             "hostname": "somehost@domain.com",
-            "database": "ORCLPDB1"
+            "database": "ORCLPDB1",
+            "secret": "Optional AWS SecretsManger secret name/arn with the above fields"
         },
         "request": "STATUS",
         "payload": {
@@ -206,7 +214,7 @@ def lambda_handler(event: dict, context: LambdaContext) -> HTTPResponse:
             envelope_validation_exc = e
 
     try:
-        return request_handler(parse_obj_as(Request, event), context)
+        return request_handler(parse_obj_as(LambdaRequest, event), context)
     except ValidationError as raw_validation_exc:
         ee = (
             format_validation_errors(envelope_validation_exc)
