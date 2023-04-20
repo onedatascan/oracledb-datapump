@@ -25,7 +25,7 @@ profile = "black"
 
 [tool.flake8]
 max-line-length = 88
-ignore = ["E402", "F841", "F401", "F403", "E302", "E305", "E306", "E731", "W503"]
+ignore = ["E302", "E305", "E306", "E402", "E731", "F401", "F403", "F841", "W503"]
 
 [tool.pytest.ini_options]
 log_cli = true
