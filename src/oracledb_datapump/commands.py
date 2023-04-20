@@ -95,7 +95,7 @@ def attach_datapump(
 class GetStatus:
     def __init__(
         self,
-        request_type: JobStatusRequestType,
+        request_type: JobStatusRequestType | None,
         timeout: int | None,
         logfile: LogFile | str | None,
     ):
@@ -148,7 +148,6 @@ class WaitOnCompletion:
         start = perf_counter()
         logger.info("Waiting on completion.", ctx=ctx)
         with ctx.connection.cursor() as cursor:
-
             job_state = cursor.var(str)
             cursor.callproc(
                 name="DBMS_DATAPUMP.WAIT_FOR_JOB",

@@ -176,4 +176,4 @@ def test_schema_import(
         )
 
     pytestconfig.cache.set(DUMPFILE_CACHE, None)
-    assert response.state == "COMPLETED"
+    assert response.state in ("COMPLETED", "COMPLETED_WITH_ERRORS")

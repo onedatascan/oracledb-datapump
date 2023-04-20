@@ -14,12 +14,7 @@ from oracledb_datapump import constants, sql
 from oracledb_datapump.base import JobMode, Operation
 from oracledb_datapump.context import JobContext, StatusContext
 from oracledb_datapump.database import DB_OBJECT_TYPE
-from oracledb_datapump.exceptions import (
-    BadRequest,
-    DatabaseError,
-    DataPumpCompletedWithErrors,
-    UsageError,
-)
+from oracledb_datapump.exceptions import BadRequest, DatabaseError, UsageError
 from oracledb_datapump.files import (
     DumpFile,
     FileType,
@@ -40,6 +35,7 @@ class JobState(Enum):
     EXECUTING = "EXECUTING"
     COMPLETING = "COMPLETING"
     COMPLETED = "COMPLETED"
+    COMPLETED_WITH_ERRORS = "COMPLETED_WITH_ERRORS"
     STOP_PENDING = "STOP_PENDING"
     STOPPING = "STOPPING"
     STOPPED = "STOPPED"
@@ -304,7 +300,6 @@ class JobStatusInfo(StatusBase):
     job_description: JobDescription | None = None
     job_status: JobStatus | None = None
     error: list[JobLogEntry] = pydantic.Field(default_factory=list)
-    exception: list[str] = pydantic.Field(default_factory=list)
     logfile: LogFile | None = None
     log_contents: list[str] = pydantic.Field(default_factory=list)
     dumpfiles: list[DumpFile] = pydantic.Field(default_factory=list)
@@ -325,10 +320,27 @@ class JobStatusInfo(StatusBase):
 
 def get_job_status(
     ctx: JobContext | StatusContext,
-    request_type: JobStatusRequestType,
+    request_type: JobStatusRequestType | None,
     timeout: int = -1,
     logfile: LogFile | str | None = None,
 ) -> JobStatusInfo:
+    strategy_precedence = [
+        _get_dd_job_status,
+        functools.partial(_build_log_job_status, logfile=logfile),
+        functools.partial(
+            _build_api_job_status,
+            request_type=JobStatusRequestType.STATUS,
+            timeout=constants.STATUS_TIMEOUT,
+        ),
+    ]
+
+    if not request_type:
+        for strategy in strategy_precedence:
+            job_status = strategy(ctx)
+            if job_status.job_state is not JobState.UNDEFINED:
+                return job_status
+        return JobStatusInfo(job_state=JobState.UNDEFINED)
+
     if request_type is JobStatusRequestType.LOG_STATUS:
         return _build_log_job_status(ctx, logfile)
     else:
@@ -339,6 +351,28 @@ def get_job_status(
                 "StatusContext cannot fetch Datapump API job status! Attach to active",
                 " job to get running job status or request LOG_STATUS only.",
             )
+
+
+def _get_dd_job_status(ctx: JobContext | StatusContext) -> JobStatusInfo:
+    """
+    Fetches job state from the database data dictionary table dba_datapump_jobs.
+    Only jobs that have not completed will be found in this table.
+    """
+
+    logger.debug("Fetching job state from data dictionary.", ctx=ctx)
+    with ctx.connection.cursor() as cursor:
+        cursor.execute(
+            sql.SQL_GET_DATAPUMP_JOB,
+            parameters={"job_owner": ctx.job_owner, "job_name": ctx.job_name},
+        )
+        result = cursor.fetchone()
+        if not result:
+            js = JobState.UNDEFINED
+        else:
+            js = JobState[cast(tuple, result)[4]]
+
+        logger.debug("Data dictionary job state is: %s", js)
+        return JobStatusInfo(job_state=js)
 
 
 def _build_api_job_status(
@@ -392,7 +426,8 @@ def _build_api_job_status(
             if files := cast(list[dict], job_status.get("files")):
                 dumpfiles = [
                     DumpFile(f["file_name"], ctx.connection)
-                    for f in files if f.get("file_name")
+                    for f in files
+                    if f.get("file_name")
                 ]
 
         status_obj["logfile"] = logfile
@@ -413,6 +448,67 @@ def _build_log_job_status(
     JOB_LOG_STATUS_RE: re.Pattern = re.compile(
         rf'Job \"{ctx.job_owner}\"\.\"{ctx.job_name}"\s(\w+\s\w+)\s(\d*\serror\(s\))?'
     )
+    JOB_LOG_ERROR_RE: re.Pattern = re.compile(r"^ORA-(\d+):\s(.*)")
+
+    job_state: JobState = JobState.UNDEFINED
+
+    dd_job_status = _get_dd_job_status(ctx)
+    if dd_job_status and dd_job_status.job_state:
+        job_state = dd_job_status.job_state
+
+    def _get_dumpfiles(log_contents: list[str]) -> list[DumpFile]:
+        logger.debug("Locating dumpfiles in logfile: %s", str(logfile))
+        dumpfiles = []
+        try:
+            df_file_start_str = f"Dump file set for {ctx.job_owner}.{ctx.job_name} is:"
+            df_start_idx = log_contents.index(df_file_start_str)
+            dumpfiles = [
+                DumpFile(line.strip(), ctx.connection)
+                for line in log_contents[df_start_idx + 1 :]
+                if line.endswith(".dmp")
+            ]
+        except ValueError:
+            logger.debug("Dumpfiles not found.")
+
+        return dumpfiles
+
+    def _get_errors(log_contents: list[str]) -> list[JobLogEntry]:
+        logger.debug("Locating errors in logfile: %s", str(logfile))
+
+        errors: list[JobLogEntry] = []
+        for ln_num, ln in enumerate(log_contents, 1):
+            if error := JOB_LOG_ERROR_RE.match(ln):
+                error_num: int = int(error.groups()[0])
+                error_message: str = ln
+                errors.append(
+                    JobLogEntry(
+                        loglinenumber=ln_num,
+                        logtext=error_message,
+                        errornumber=error_num,
+                    )
+                )
+        return errors
+
+    def _get_job_result(log_contents: list[str]) -> JobState:
+        last_line = log_contents[-1]
+        logger.debug("Job log last line: %s", last_line)
+
+        result, errors = None, None
+        if found := JOB_LOG_STATUS_RE.search(last_line):
+            logger.debug(
+                "job_name: %s log pattern search result: %s", ctx.job_name, found
+            )
+            result = found.groups()[0].strip()
+            errors = found.groups()[1]
+
+        logger.debug("Job log result: %s", result)
+
+        if result == "successfully completed":
+            return JobState.COMPLETED
+        elif result == "completed with" and errors:
+            return JobState.COMPLETED_WITH_ERRORS
+        else:
+            return JobState.UNDEFINED
 
     if not logfile:
         logfile = LogFile(
@@ -434,74 +530,43 @@ def _build_log_job_status(
 
     if not logfile.exists:
         return JobStatusInfo(
-            job_state=JobState.UNDEFINED,
-            exception=[
-                str(FileNotFoundError(f"logfile not found: {str(logfile.path)}"))
+            job_state=job_state,
+            error=[
+                JobLogEntry(
+                    loglinenumber=0,
+                    logtext=str(
+                        FileNotFoundError(f"logfile not found: {str(logfile.path)}")
+                    ),
+                    errornumber=0,
+                )
             ],
             logfile=logfile,
             log_contents=[],
         )
     elif logfile.size == 0:
-        return JobStatusInfo(
-            job_state=JobState.UNDEFINED, logfile=logfile, log_contents=[]
-        )
+        return JobStatusInfo(job_state=job_state, logfile=logfile, log_contents=[])
     else:
         logger.debug("Found logfile: %s size: %s", str(logfile.path), logfile.size)
 
     logger.debug("Reading logfile: %s", str(logfile.path))
     with ora_open(logfile, "r") as lf:
-        log_contents = lf.read().splitlines()
-
-    logger.debug("Locating dumpfiles in logfile: %s", str(logfile.path))
-    dumpfiles = []
-    try:
-        df_file_start_str = f"Dump file set for {ctx.job_owner}.{ctx.job_name} is:"
-        df_start_idx = log_contents.index(df_file_start_str)
-        dumpfiles = [
-            DumpFile(line.strip(), ctx.connection)
-            for line in log_contents[df_start_idx + 1:]
-            if line.endswith(".dmp")
-        ]
-    except ValueError:
-        logger.debug("Dumpfiles not found.")
+        log_contents: list[str] = lf.read().splitlines()
 
     logger.debug("job_name: %s log file contents: %s", ctx.job_name, log_contents)
-    last_line = log_contents[-1]
-    logger.debug("Job log last line: %s", last_line)
 
-    if found := JOB_LOG_STATUS_RE.search(last_line):
-        logger.debug("job_name: %s log pattern search result: %s", ctx.job_name, found)
-        result = found.groups()[0].strip()
-        errors = found.groups()[1]
-    else:
-        result = None
-        errors = None
+    dumpfiles: list[DumpFile] = _get_dumpfiles(log_contents)
+    errors: list[JobLogEntry] = _get_errors(log_contents)
+    job_result: JobState = _get_job_result(log_contents)
 
-    logger.debug("Job log result: %s", result)
+    job_status = JobStatusInfo(
+        job_state=job_result if job_result is not JobState.UNDEFINED else job_state,
+        error=errors,
+        logfile=logfile,
+        log_contents=log_contents,
+        dumpfiles=dumpfiles,
+    )
 
-    if result == "successfully completed":
-        return JobStatusInfo(
-            job_state=JobState.COMPLETED,
-            logfile=logfile,
-            log_contents=log_contents,
-            dumpfiles=dumpfiles
-        )
-    elif result == "completed with" and errors:
-        js = JobStatusInfo(
-            job_state=JobState.COMPLETED,
-            logfile=logfile,
-            log_contents=log_contents,
-            dumpfiles=dumpfiles,
-        )
-        js.add_exception(DataPumpCompletedWithErrors(errors))
-        return js
-    else:
-        return JobStatusInfo(
-            job_state=JobState.UNDEFINED,
-            logfile=logfile,
-            log_contents=log_contents,
-            dumpfiles=dumpfiles,
-        )
+    return job_status
 
 
 T = TypeVar("T")
