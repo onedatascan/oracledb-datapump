@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
 import operator
+from time import perf_counter
 from typing import Final, Iterable, TypeAlias, assert_never, cast
 from zoneinfo import ZoneInfo
 
@@ -41,21 +42,21 @@ class _Connection(Connection):
         super().__init__(*args, **kwargs)
 
         self._password = ""
-        self._host = self.dsn.split("/")[0]
+        self._hostname = self.dsn.split("/")[0]
         self._database = self.dsn.split("/")[1]
 
     def __str__(self):
         return (
-            f"DatabaseContext(id={id(self)}, user={self.username}, "
-            f"host={self._host}, database={self._database})"
+            f"DatabaseContext(id={id(self)}, username={self.username}, "
+            f"hostname={self._hostname}, database={self._database})"
         )
 
     @classmethod
     def from_dict(cls, cd: ConnectDict):
         return connect(
-            user=cd["user"],
+            user=cd["username"],
             password=cd["password"],
-            dsn=f"{cd['host']}/{cd['database']}",
+            dsn=f"{cd['hostname']}/{cd['database']}",
         )
 
 
@@ -68,14 +69,20 @@ connect: Callable[..., _Connection] = functools.partial(
 def get_connection(
     params: str | ConnectDict | Connection, /, *args, **kwargs
 ) -> Connection:
+    start_ts = perf_counter()
+    logger.debug("Acquiring connection...")
+
     if isinstance(params, Connection):
-        return params
-    if isinstance(params, str):
-        return connect(params, *args, **kwargs)
-    if isinstance(params, dict):
-        return _Connection.from_dict(params)
+        connection = params
+    elif isinstance(params, str):
+        connection = connect(params, *args, **kwargs)
+    elif isinstance(params, dict):
+        connection = _Connection.from_dict(params)
     else:
         assert_never(params)
+
+    logger.debug("Connection acquired. took %.4fs", (perf_counter() - start_ts))
+    return connection
 
 
 @dataclass

@@ -852,6 +852,8 @@ class SubstitutionVarMixin:
                 resolved_files,
             )
 
+        logger.debug("Resolved dumpfiles for import: %s", resolved_files)
+
         return resolved_files
 
     def resolve_sequences_for_export(
@@ -877,6 +879,8 @@ class SubstitutionVarMixin:
             for seq_num in range(1, (num_files_required // len(unresolved_files) + 1)):
                 sequenced_file = make_seq_dumpfile(file.name, seq_num)
                 resolved_files.add(sequenced_file)
+
+        logger.debug("Resolved dumpfiles for export: %s", resolved_files)
 
         return resolved_files
 

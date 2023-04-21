@@ -109,9 +109,9 @@ logging.basicConfig(level="INFO")
 
 job_request = {
     "connection": {
-        "user": "system",
+        "username": "system",
         "password": "manager",
-        "host": "localhost",
+        "hostname": "localhost",
         "database": "orclpdb1"
     },
     "request": "SUBMIT",
@@ -131,9 +131,9 @@ print(response)
 logfile = DataPump.get_logfile(
     str(response.logfile),
     connection={
-        "user": "system",
+        "username": "system",
         "password": "manager",
-        "host": "localhost",
+        "hostname": "localhost",
         "database": "orclpdb1"
     }
 )
@@ -152,9 +152,9 @@ logging.basicConfig(level="INFO")
 
 job_request = {
     "connection": {
-        "user": "system",
+        "username": "system",
         "password": "manager",
-        "host": "localhost",
+        "hostname": "localhost",
         "database": "orclpdb1",
     },
     "request": "SUBMIT",
@@ -179,9 +179,9 @@ print(response)
 logfile = DataPump.get_logfile(
     str(response.logfile),
     connection={
-        "user": "system",
+        "username": "system",
         "password": "manager",
-        "host": "localhost",
+        "hostname": "localhost",
         "database": "orclpdb1"
     }
 )
@@ -201,9 +201,9 @@ logging.basicConfig(level="INFO")
 
 job_request = {
     "connection": {
-        "user": "system",
+        "username": "system",
         "password": "manager",
-        "host": "localhost",
+        "hostname": "localhost",
         "database": "orclpdb1",
     },
     "request": "SUBMIT",
@@ -227,9 +227,9 @@ print(response)
 
 status_request = {
     "connection": {
-        "user": "system",
+        "username": "system",
         "password": "manager",
-        "host": "localhost",
+        "hostname": "localhost",
         "database": "orclpdb1",
     },
     "request": "STATUS",
@@ -252,7 +252,7 @@ print(f"final status: {status}")
 ## CLI
 ```bash
 $ oracledb-datapump --help
-usage: oracledb-datapump [-h] (--schema SCHEMA | --full | --table TABLE) --user USER --password PASSWORD --host HOST --database DATABASE [--parallel PARALLEL] [--dumpfile DUMPFILE]
+usage: oracledb-datapump [-h] (--schema SCHEMA | --full | --table TABLE) --username USERNAME --password PASSWORD --hostname HOSTNAME --database DATABASE [--parallel PARALLEL] [--dumpfile DUMPFILE]
                          [--compression {DATA_ONLY,METADATA_ONLY,ALL,NONE}] [--exclude EXCLUDE] [--remap_schema REMAP_SCHEMA] [--remap_tablespace REMAP_TABLESPACE]
                          [--flashback_utc FLASHBACK_UTC] [--directive DIRECTIVE]
                          {import,export,impdp,expdp}
@@ -267,9 +267,9 @@ options:
   --schema SCHEMA
   --full
   --table TABLE
-  --user USER           Oracle admin user
+  --username USERNAME   Oracle admin username
   --password PASSWORD   Oracle admin password
-  --host HOST           Database service host
+  --hostname HOSTNAME   Database service host
   --database DATABASE   Database service name
   --parallel PARALLEL   Number of datapump workers
   --dumpfile DUMPFILE   Oracle dumpfile - Required for import
@@ -287,12 +287,12 @@ options:
 
 ### Export
 ```bash
-oracledb-datapump --user system --password manager --host localhost --database orclpdb1 --parallel 2 --schema hr export
+oracledb-datapump --username system --password manager --hostname localhost --database orclpdb1 --parallel 2 --schema hr export
 ```
 
 ### Import
 ```bash
-oracledb-datapump --user system --password manager --host localhost --database orclpdb1 --schema HR --dumpfile HR.dmp --remap_schema "HR:HR2" import
+oracledb-datapump --username system --password manager --hostname localhost --database orclpdb1 --schema HR --dumpfile HR.dmp --remap_schema "HR:HR2" import
 ```
 
 ## HTTP Server as AWS Lambda
@@ -303,9 +303,9 @@ This example assumes the use of a custom domain name mapped to an API Gateway or
 curl -XPOST "https://oracledb-util-api.somedomain.com/datapump" -d \
  '{
     "connection": {
-        "user": "system",
+        "username": "system",
         "password": "manager",
-        "host": "host.docker.internal",
+        "hostname": "host.docker.internal",
         "database": "orclpdb1"
     },
     "request": "SUBMIT",
@@ -327,9 +327,9 @@ curl -XPOST "https://oracledb-util-api.somedomain.com/datapump" -d \
 response=$(curl -XPOST "https://oracledb-util-api.somedomain.com/datapump" -d \
  '{
     "connection": {
-        "user": "system",
+        "username": "system",
         "password": "manager",
-        "host": "host.docker.internal",
+        "hostname": "host.docker.internal",
         "database": "orclpdb1"
     },
     "request": "SUBMIT",
@@ -357,9 +357,9 @@ JOB_OWNER=$(jq -r '.job_owner' <<< $response)
 curl -XPOST "https://oracledb-util-api.somedomain.com/datapump" -d \
  '{
     "connection": {
-        "user": "system",
+        "username": "system",
         "password": "manager",
-        "host": "host.docker.internal",
+        "hostname": "host.docker.internal",
         "database": "orclpdb1"
     },
     "request": "STATUS",

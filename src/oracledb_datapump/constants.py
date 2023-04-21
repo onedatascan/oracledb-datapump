@@ -15,6 +15,7 @@ SERVICE_NAME: Final[str] = "oracledb-datapump"
 STATUS_TIMEOUT: Final[int] = 120
 DEFAULT_SQLNET_PORT: Final[int] = 1521
 NAME_DELIM: Final[str] = "-"
+TAG_DELIM: Final[str] = "#"
 
 IOMode = Literal["r", "w"]
 ContentType: TypeAlias = Type[str] | Type[bytes]

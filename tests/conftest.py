@@ -94,9 +94,9 @@ def db_ctx(env_config):
 
     return get_connection(
         ConnectDict(
-            user=str(env_config["ADMIN_USER"]),
+            username=str(env_config["ADMIN_USER"]),
             password=str(env_config["ORACLE_PWD"]),
-            host=str(env_config["DB_HOST"]),
+            hostname=str(env_config["DB_HOST"]),
             database=str(env_config["DATABASE"]),
         )
     )
@@ -107,16 +107,15 @@ def connect_params(env_config):
     from oracledb_datapump.database import ConnectDict
 
     return ConnectDict(
-        user=str(env_config["ADMIN_USER"]),
+        username=str(env_config["ADMIN_USER"]),
         password=str(env_config["ORACLE_PWD"]),
-        host=str(env_config["DB_HOST"]),
+        hostname=str(env_config["DB_HOST"]),
         database=str(env_config["DATABASE"]),
     )
 
 
 @pytest.fixture
 def make_import_request(env_config):
-
     requests = []
 
     def _make_import_request(
@@ -129,7 +128,7 @@ def make_import_request(env_config):
     ):
         request = {
             "connection": {
-                "user": env_config["ADMIN_USER"],
+                "username": env_config["ADMIN_USER"],
                 "password": env_config["ORACLE_PWD"],
                 "host": env_config["DB_HOST"],
                 "database": env_config["DATABASE"],

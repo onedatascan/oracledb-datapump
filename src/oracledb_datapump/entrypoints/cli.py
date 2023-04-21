@@ -40,9 +40,9 @@ def main() -> int:
     job_mode.add_argument("--full", action="store_true")
     job_mode.add_argument("--table", action="append", default=[])
 
-    parser.add_argument("--user", required=True, help="Oracle admin user")
+    parser.add_argument("--username", required=True, help="Oracle admin username")
     parser.add_argument("--password", required=True, help="Oracle admin password")
-    parser.add_argument("--host", required=True, help="Database service host")
+    parser.add_argument("--hostname", required=True, help="Database service host")
     parser.add_argument("--database", required=True, help="Database service name")
     parser.add_argument(
         "--parallel", default=1, help="Number of datapump workers", type=int
@@ -123,9 +123,9 @@ def main() -> int:
     logger.info(payload)
 
     connect_dict: ConnectDict = {
-        "user": str(args.user),
+        "username": str(args.username),
         "password": str(args.password),
-        "host": str(args.host),
+        "hostname": str(args.hostname),
         "database": str(args.database),
     }
 

@@ -14,16 +14,12 @@ from oracledb_datapump.request import (
     JobDirective,
     Response,
     StatusPayload,
-    StatusRequest,
     SubmitPayload,
-    SubmitRequest,
 )
 
 __all__ = [
     "ConnectDict",
-    "SubmitRequest",
     "SubmitPayload",
-    "StatusRequest",
     "StatusPayload",
     "Response",
     "JobDirective",
