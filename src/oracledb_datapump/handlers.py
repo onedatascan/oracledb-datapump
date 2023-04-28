@@ -114,7 +114,6 @@ class FileUri:
 class FileHandler:
     handlers = {}
     _dumpfiles = []
-    _pending_property_file = None
 
     def __init__(self, ctx: OpenContext):
         self.ctx = ctx
