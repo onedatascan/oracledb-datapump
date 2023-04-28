@@ -113,10 +113,10 @@ class FileUri:
 
 class FileHandler:
     handlers = {}
-    _dumpfiles = []
 
     def __init__(self, ctx: OpenContext):
         self.ctx = ctx
+        self._dumpfiles: list[str] = []
 
     def __init_subclass__(cls, file_type: type[object], **kwargs) -> None:
         super().__init_subclass__(**kwargs)
@@ -131,7 +131,7 @@ class FileHandler:
         else:
             handler = self.handlers[str]
         logger.debug("Handling dumpfile arg: %s", file)
-        handler.handle(file, self.ctx)
+        self._dumpfiles.append(handler.handle(file, self.ctx))
 
     def produce(self) -> set[DumpFile]:
         if self.ctx.operation is Operation.IMPORT and self._dumpfiles is None:
@@ -151,5 +151,5 @@ class FileHandler:
 
 class NoSchemeHandler(FileHandler, file_type=str):
     @classmethod
-    def handle(cls, file: str, ctx: OpenContext) -> None:
-        cls._dumpfiles.append(file)
+    def handle(cls, file: str, ctx: OpenContext) -> str:
+        return file
