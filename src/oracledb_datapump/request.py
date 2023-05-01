@@ -76,7 +76,7 @@ class SubmitPayload(Payload):
 class StatusPayload(Payload):
     job_name: str
     job_owner: str
-    type: Literal["ALL", "STATUS", "DESC", "ERROR", "LOG_STATUS"] = "LOG_STATUS"
+    type: Literal["ALL", "STATUS", "DESC", "ERROR", "LOG_STATUS"] | None = None
     include_detail: bool = True
 
 
@@ -193,7 +193,7 @@ class JobStatusHandler(RequestHandler, request_type="STATUS"):
         if not isinstance(connection, Connection):
             connection = get_connection(cls.build_connect_dict(request.connection))
 
-        if request.payload.type == "LOG_STATUS":
+        if request.payload.type == "LOG_STATUS" or request.payload.type is None:
             status = get_status(
                 connection=connection,
                 job_name=request.payload.job_name,
@@ -244,6 +244,7 @@ class Response(pydantic.BaseModel):
         "EXECUTING",
         "COMPLETING",
         "COMPLETED",
+        "COMPLETED_WITH_ERRORS",
         "STOP_PENDING",
         "STOPPING",
         "STOPPED",

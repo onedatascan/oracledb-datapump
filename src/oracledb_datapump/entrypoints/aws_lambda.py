@@ -187,7 +187,6 @@ def lambda_handler(event: dict, context: LambdaContext) -> HTTPResponse:
         "payload": {
             "job_name": "EXP-HR-20230206222426382048",
             "job_owner": "HR",
-            "type": "LOG_STATUS",
         }
     }
     """

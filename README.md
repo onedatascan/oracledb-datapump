@@ -235,13 +235,12 @@ status_request = {
     "request": "STATUS",
     "payload": {
         "job_name": response.job_name,
-        "job_owner": response.job_owner,
-        "type": "LOG_STATUS",
+        "job_owner": response.job_owner
     },
 }
 
 status = DataPump.submit(json.dumps(status_request))
-while status.state not in ("COMPLETED", "STOPPED"):
+while status.state not in ("COMPLETED", "COMPLETED_WITH_ERRORS", "STOPPED"):
     print(status)
     sleep(15)
     status = DataPump.submit(json.dumps(status_request))

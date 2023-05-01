@@ -357,13 +357,14 @@ def attach(
 
 
 def get_status(
-    connection: Connection | ConnectDict | str, job_name: str, job_owner: str
+    connection: Connection | ConnectDict | str,
+    job_name: str,
+    job_owner: str,
+    status_type: JobStatusRequestType | None = None,
 ) -> JobStatusInfo:
     connection = get_connection(connection)
     handler = get_status_handler(connection, job_name, job_owner)
-    status = handler.send(
-        GetStatus(JobStatusRequestType.LOG_STATUS, timeout=-1, logfile=None)
-    )
+    status = handler.send(GetStatus(status_type, timeout=-1, logfile=None))
     return status
 
 
@@ -397,7 +398,9 @@ def poll_for_completion(
     response = get_status(connection, job_name, job_owner)
     logger.info(str(response))
     state = response.job_state
-    while state not in (JobState.COMPLETED, JobState.STOPPED):
+    while state not in (
+        JobState.COMPLETED, JobState.COMPLETED_WITH_ERRORS, JobState.STOPPED
+    ):
         sleep(rate)
         response = get_status(connection, job_name, job_owner)
         logger.debug(str(response))
