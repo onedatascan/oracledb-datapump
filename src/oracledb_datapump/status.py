@@ -331,7 +331,7 @@ def get_job_status(
         ctx=ctx,
     )
 
-    strategy_precedence = [
+    auto_strategy_precedence = [
         _get_dd_job_status,
         functools.partial(_build_log_job_status, logfile=logfile),
         functools.partial(
@@ -343,7 +343,7 @@ def get_job_status(
 
     if not request_type:
         logger.debug("Fetching job status")
-        for strategy in strategy_precedence:
+        for strategy in auto_strategy_precedence:
             job_status = strategy(ctx)
             if job_status.job_state is not JobState.UNDEFINED:
                 return job_status
