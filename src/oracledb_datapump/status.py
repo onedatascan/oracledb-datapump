@@ -358,7 +358,7 @@ def get_job_status(
             return _build_api_job_status(ctx, request_type, timeout)
         else:
             raise UsageError(
-                "StatusContext cannot fetch Datapump API job status! Attach to active",
+                "StatusContext cannot fetch Datapump API job status! Attach to active"
                 " job to get running job status or request LOG_STATUS only.",
             )
 
