@@ -64,6 +64,7 @@ class Job:
         if self.operation is Operation.IMPORT and not dumpfiles:
             raise UsageError("Dumpfiles argument required for import job")
 
+        self._default_directory: str = constants.DEFAULT_DP_DIR
         self._file_uris = dumpfiles or []
         self.dumpfiles: set[DumpFile] = set()
         self.logfile: LogFile | None = None
@@ -164,12 +165,17 @@ class Job:
     def _build_metadata_file(self) -> OracleFile:
         assert self.connection
         assert self.metadata
+        self.metadata = cast(JobMetaData, self.metadata)
         filename = self._get_default_file_name(FileType.META_FILE)
-        directory_name: str | None = self.metadata.get("directory")
+        directory_names: list[str] | None = self.metadata.get("directories")
 
-        directory = (
-            OracleDirectory(directory_name, self.connection) if directory_name else None
-        )
+        directory = None
+        if directory_names:
+            if self._default_directory in directory_names:
+                directory = OracleDirectory(self._default_directory, self.connection)
+            else:
+                directory = OracleDirectory(directory_names[0], self.connection)
+
         return OracleFile(filename, self.connection, directory)
 
     def has_directive(self, directive: type[DirectiveBase]) -> bool:
@@ -232,6 +238,7 @@ class Job:
             self.parallel,
         )
 
+        # TODO: Extract Job metadata object creation out to a separate builder class
         self._add_metadata(
             {
                 "job_name": self.job_name,
@@ -256,7 +263,9 @@ class Job:
 
         self.dumpfiles = file_handler.produce()
         self._add_metadata({"dumpfiles": [str(f.path) for f in self.dumpfiles]})
-        self._add_metadata({"directory": next(iter(self.dumpfiles)).directory.name})
+        self._add_metadata(
+            {"directories": list({f.directory.name for f in self.dumpfiles})}
+        )
 
         if self.operation == Operation.EXPORT and not (
             self.has_directive(Directive.FLASHBACK_SCN)
@@ -399,7 +408,9 @@ def poll_for_completion(
     logger.info(str(response))
     state = response.job_state
     while state not in (
-        JobState.COMPLETED, JobState.COMPLETED_WITH_ERRORS, JobState.STOPPED
+        JobState.COMPLETED,
+        JobState.COMPLETED_WITH_ERRORS,
+        JobState.STOPPED,
     ):
         sleep(rate)
         response = get_status(connection, job_name, job_owner)

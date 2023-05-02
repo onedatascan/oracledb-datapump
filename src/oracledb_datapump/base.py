@@ -51,7 +51,7 @@ class JobMetaData(TypedDict):
     schema_versions: dict[str, str]
     tablespaces: list[str]
     dumpfiles: list[str]
-    directory: str
+    directories: list[str]
     directives: list[str]
 
 
