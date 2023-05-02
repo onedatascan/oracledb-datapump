@@ -324,7 +324,14 @@ def get_job_status(
     timeout: int = -1,
     logfile: LogFile | str | None = None,
 ) -> JobStatusInfo:
-    strategy_precedence = [
+    logger.debug(
+        "Received job status %s request using logfile: %s",
+        repr(request_type) if request_type else "AUTO",
+        logfile,
+        ctx=ctx,
+    )
+
+    auto_strategy_precedence = [
         _get_dd_job_status,
         functools.partial(_build_log_job_status, logfile=logfile),
         functools.partial(
@@ -335,20 +342,23 @@ def get_job_status(
     ]
 
     if not request_type:
-        for strategy in strategy_precedence:
+        logger.debug("Fetching job status")
+        for strategy in auto_strategy_precedence:
             job_status = strategy(ctx)
             if job_status.job_state is not JobState.UNDEFINED:
                 return job_status
         return JobStatusInfo(job_state=JobState.UNDEFINED)
 
     if request_type is JobStatusRequestType.LOG_STATUS:
+        logger.debug("Fetching job status from logfile")
         return _build_log_job_status(ctx, logfile)
     else:
+        logger.debug("Fetching job status from Datapump API")
         if isinstance(ctx, JobContext):
             return _build_api_job_status(ctx, request_type, timeout)
         else:
             raise UsageError(
-                "StatusContext cannot fetch Datapump API job status! Attach to active",
+                "StatusContext cannot fetch Datapump API job status! Attach to active"
                 " job to get running job status or request LOG_STATUS only.",
             )
 

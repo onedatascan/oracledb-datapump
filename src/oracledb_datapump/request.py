@@ -193,18 +193,25 @@ class JobStatusHandler(RequestHandler, request_type="STATUS"):
         if not isinstance(connection, Connection):
             connection = get_connection(cls.build_connect_dict(request.connection))
 
-        if request.payload.type == "LOG_STATUS" or request.payload.type is None:
+        status_type = (
+            JobStatusRequestType[request.payload.type] if request.payload.type else None
+        )
+
+        logger.debug("Status type is: %s", repr(status_type))
+
+        if status_type is JobStatusRequestType.LOG_STATUS or status_type is None:
             status = get_status(
                 connection=connection,
                 job_name=request.payload.job_name,
                 job_owner=request.payload.job_owner,
+                status_type=status_type,
             )
         else:
             status = get_info(
                 connection=connection,
                 job_name=request.payload.job_name,
                 job_owner=request.payload.job_owner,
-                status_type=JobStatusRequestType[request.payload.type],
+                status_type=status_type,
             )
 
         return cls.build_status_response(
