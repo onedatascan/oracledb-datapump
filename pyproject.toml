@@ -1,20 +1,41 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "oracledb_datapump"
+dynamic = ["version"]
 description = "Python client for Oracle datapump"
 license = {text = "apache-2.0"}
 requires-python = ">=3.11"
-version = "0.0.1"
 dependencies = [
     "oracledb == 1.2.0",
     "pydantic == 1.10.2",
 ]
+maintainers = [
+  {name = "Ryan Gibbard", email = "ryan.gibbard@onedatascan.com"},
+  {name = "Jason Walker", email = "jason.walker@onedatascan.com"},
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Database",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+readme = {file = "README.md", content-type = "text/markdown"}
 
 [project.scripts]
 oracledb-datapump = "oracledb_datapump.__main__:main"
+
+[tool.setuptools]
+license-files = ["LICENSE*"]
+
+[tool.setuptools_scm]
 
 [tool.black]
 target-version = ['py311']
