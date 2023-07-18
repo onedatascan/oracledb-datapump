@@ -40,4 +40,3 @@ WORKDIR /${PACKAGE}
 ENV MODULE=${PACKAGE}
 
 ENTRYPOINT [ "python", "-m", "oracledb_datapump" ]
-

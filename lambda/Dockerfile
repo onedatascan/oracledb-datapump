@@ -45,4 +45,3 @@ WORKDIR /${PACKAGE}
 
 ENTRYPOINT [ "/lambda-entrypoint.sh"]
 CMD ["lambda_handler.lambda_handler"]
-
