@@ -1,7 +1,7 @@
 import base64
-from collections import defaultdict
 import json
 import os
+from collections import defaultdict
 from http import HTTPStatus
 from typing import Final, Protocol, TypeAlias, TypedDict, cast, runtime_checkable
 
@@ -16,11 +16,7 @@ from aws_lambda_powertools.utilities.parser import (
     parse,
     root_validator,
 )
-from aws_lambda_powertools.utilities.parser.pydantic import (
-    Extra,
-    Json,
-    parse_obj_as,
-)
+from aws_lambda_powertools.utilities.parser.pydantic import Extra, Json, parse_obj_as
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
 from oracledb_datapump.client import DataPump
