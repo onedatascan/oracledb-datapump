@@ -27,6 +27,12 @@ logger = Logger(service=SERVICE_NAME, level=os.getenv("LOG_LEVEL", "INFO"))
 copy_config_to_registered_loggers(logger)
 
 ENVELOPE: Final[str | None] = os.getenv("ENVELOPE")
+RESOLVE_SECRETS: Final[bool] = str(os.getenv("RESOLVE_SECRETS", "0")).lower() in (
+    "yes",
+    "true",
+    "t",
+    "1",
+)
 
 json_types: TypeAlias = str | int | dict | list | bool | None
 json_str: TypeAlias = str
@@ -105,15 +111,22 @@ class ConnectWithSecretModel(ConnectModel):
     @root_validator(pre=True)
     def populate_from_secret(cls, values):
         if "secret" in values:
-            try:
-                secret_value = parameters.get_secret(values["secret"], transform="json")
-            except Exception as e:
-                raise ValueError(
-                    f"Failed to fetch or parse secret: {values['secret']} "
-                    f"reason: {str(e)}"
-                ) from e
+            if RESOLVE_SECRETS:
+                try:
+                    secret_value = parameters.get_secret(
+                        values["secret"], transform="json"
+                    )
+                except Exception as e:
+                    raise ValueError(
+                        f"Failed to fetch or parse secret: {values['secret']} "
+                        f"reason: {str(e)}"
+                    ) from e
+                else:
+                    values.update(secret_value)
             else:
-                values.update(secret_value)
+                raise ValueError(
+                    "A connection secret was passed but RESOLVE_SECRETS is not enabled!"
+                )
         return values
 
 
