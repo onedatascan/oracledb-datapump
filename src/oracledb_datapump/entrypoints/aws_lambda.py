@@ -3,7 +3,15 @@ import json
 import os
 from collections import defaultdict
 from http import HTTPStatus
-from typing import Final, Protocol, TypeAlias, TypedDict, cast, runtime_checkable
+from typing import (
+    Final,
+    NotRequired,
+    Protocol,
+    TypeAlias,
+    TypedDict,
+    cast,
+    runtime_checkable,
+)
 
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.logging.utils import copy_config_to_registered_loggers
@@ -42,7 +50,7 @@ HTTPResponse = TypedDict(
     {
         "isBase64Encoded": bool,
         "statusCode": HTTPStatus,
-        "statusDescription": str,
+        "statusDescription": NotRequired[str],
         "headers": dict[str, str],
         "body": json_str,
     },
@@ -59,6 +67,11 @@ def build_response(
         "headers": {"Content-Type": "application/json"},
         "body": json.dumps(body),
     }
+
+    # APIGateway does not allow a statusDescription key in the response
+    if ENVELOPE == "APIGatewayProxyEventModel":
+        response.pop("statusDescription")
+
     logger.info("Response: %s", response)
     return response
 
@@ -161,7 +174,7 @@ def envelope_handler(event: Envelope, context: LambdaContext) -> HTTPResponse:
     return request_handler(parse_obj_as(LambdaRequest, event.body), context)
 
 
-@logger.inject_lambda_context
+@logger.inject_lambda_context(log_event=True)
 def lambda_handler(event: dict, context: LambdaContext) -> HTTPResponse:
     """
     sample submit:
